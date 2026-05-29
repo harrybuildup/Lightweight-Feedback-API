@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field, EmailStr
-from typing import Literal
+from typing import Literal, List
 import uuid
 
 
@@ -25,10 +25,10 @@ def read_root():
 def health_check():
     return {"status": "API is running"}
 
-@app.get("/feedback")
+@app.get("/feedback", response_model=List[Feedback])
 def get_feedback():
     if not feedback_db:
-        return {"message": "No feedback entries found"}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No feedback entries found")
     return feedback_db
 
 @app.post("/feedback")
