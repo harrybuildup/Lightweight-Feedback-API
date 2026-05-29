@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Feedback Form</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: #1a1a2e;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-bottom: 1.75rem;
+    }
+
+    .field { margin-bottom: 1.25rem; }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.4rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #1f2937;
+      background: #fff;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: #4f46e5; }
+    input.error, select.error, textarea.error  { border-color: #ef4444; }
+
+    .error-msg {
+      font-size: 0.78rem;
+      color: #ef4444;
+      margin-top: 0.3rem;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+
+    textarea { resize: vertical; min-height: 100px; }
+
+    /* Star Rating */
+    .stars { display: flex; gap: 6px; margin-top: 0.2rem; }
+    .stars span {
+      font-size: 1.8rem;
+      cursor: pointer;
+      color: #d1d5db;
+      transition: color 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .stars span.active { color: #f59e0b; }
+    .stars span:hover  { transform: scale(1.2); }
+    .star-label { font-size: 0.8rem; color: #6b7280; margin-top: 0.3rem; }
+
+    /* Submit button */
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 0.5rem;
+    }
+    .btn:hover    { background: #4338ca; }
+    .btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+    /* Spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Success banner */
+    .success-banner {
+      display: none;
+      background: #ecfdf5;
+      border: 1.5px solid #6ee7b7;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .success-banner.show { display: block; }
+    .success-banner p { color: #065f46; font-size: 0.9rem; font-weight: 500; }
+
+    /* API error banner */
+    .api-banner {
+      display: none;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .api-banner.show     { display: block; }
+    .api-banner.is-error {
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Share Your Feedback</h1>
+  <p class="subtitle">We'd love to hear what you think.</p>
+
+  <form id="feedbackForm" novalidate>
+
+    <!-- Email -->
+    <div class="field">
+      <label for="email">Email address</label>
+      <input type="email" id="email" placeholder="you@example.com" />
+      <div class="error-msg" id="emailErr">Please enter a valid email address.</div>
+    </div>
+
+    <!-- Category -->
+    <div class="field">
+      <label for="category">Category</label>
+      <select id="category">
+        <option value="general">General</option>
+        <option value="bug">Bug</option>
+        <option value="feature">Feature</option>
+      </select>
+    </div>
+
+    <!-- Star Rating -->
+    <div class="field">
+      <label>Rating</label>
+      <div class="stars" id="stars">
+        <span data-value="1">★</span>
+        <span data-value="2">★</span>
+        <span data-value="3">★</span>
+        <span data-value="4">★</span>
+        <span data-value="5">★</span>
+      </div>
+      <div class="star-label" id="starLabel">Click to rate</div>
+      <div class="error-msg" id="starErr">Please select a rating.</div>
+    </div>
+
+    <!-- Description -->
+    <div class="field">
+      <label for="description">Description</label>
+      <textarea id="description" placeholder="Tell us more (at least 10 characters)..."></textarea>
+      <div class="error-msg" id="descErr">Description must be at least 10 characters.</div>
+    </div>
+
+    <button type="submit" class="btn" id="submitBtn">
+      <span id="btnText">Submit Feedback</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+  </form>
+
+  <!-- Success banner -->
+  <div class="success-banner" id="successBanner">
+    <p>✅ Thank you! Your feedback has been submitted.</p>
+  </div>
+
+  <!-- API error banner (replaces alert()) -->
+  <div class="api-banner" id="apiBanner"></div>
+</div>
+
+<script>
+  const API_URL = '/feedback';
+  let selectedRating = 0;
+  const starLabels = ['', 'Terrible', 'Poor', 'Okay', 'Good', 'Excellent'];
+
+  // ── Star rating ──────────────────────────────────────────────
+  const stars = document.querySelectorAll('#stars span');
+
+  stars.forEach(star => {
+    star.addEventListener('click', () => {
+      selectedRating = parseInt(star.dataset.value);
+      document.getElementById('starLabel').textContent = starLabels[selectedRating];
+      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.value) <= selectedRating));
+      document.getElementById('starErr').classList.remove('show');
+    });
+
+    star.addEventListener('mouseenter', () => {
+      const val = parseInt(star.dataset.value);
+      stars.forEach(s => {
+        s.style.color = parseInt(s.dataset.value) <= val ? '#f59e0b' : '#d1d5db';
+      });
+    });
+
+    star.addEventListener('mouseleave', () => {
+      stars.forEach(s => {
+        s.style.color = parseInt(s.dataset.value) <= selectedRating ? '#f59e0b' : '#d1d5db';
+      });
+    });
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function showFieldError(id, show) {
+    document.getElementById(id).classList.toggle('show', show);
+  }
+
+  function setInputError(id, hasError) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('error', hasError);
+  }
+
+  function showApiError(message) {
+    const banner = document.getElementById('apiBanner');
+    banner.textContent = '⚠️ ' + message;
+    banner.classList.add('show', 'is-error');
+    // Auto-hide after 6 seconds
+    setTimeout(() => banner.classList.remove('show', 'is-error'), 6000);
+  }
+
+  function clearApiBanner() {
+    const banner = document.getElementById('apiBanner');
+    banner.classList.remove('show', 'is-error');
+    banner.textContent = '';
+  }
+
+  // ── Form submit ──────────────────────────────────────────────
+  document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearApiBanner();
+
+    const email       = document.getElementById('email').value.trim();
+    const category    = document.getElementById('category').value;
+    const description = document.getElementById('description').value.trim();
+    let valid = true;
+
+    if (!isValidEmail(email)) {
+      showFieldError('emailErr', true); setInputError('email', true); valid = false;
+    } else {
+      showFieldError('emailErr', false); setInputError('email', false);
+    }
+
+    if (selectedRating === 0) {
+      showFieldError('starErr', true); valid = false;
+    } else {
+      showFieldError('starErr', false);
+    }
+
+    if (description.length < 10) {
+      showFieldError('descErr', true); setInputError('description', true); valid = false;
+    } else {
+      showFieldError('descErr', false); setInputError('description', false);
+    }
+
+    if (!valid) return;
+
+    // Show loading state
+    const btn     = document.getElementById('submitBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Submitting...';
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ email, category, description, rating: selectedRating })
+      });
+
+      if (res.status === 422) {
+        showApiError('Invalid data submitted. Please check your inputs and try again.');
+        return;
+      }
+      if (res.status === 500) {
+        showApiError('A server error occurred. Please try again later.');
+        return;
+      }
+      if (!res.ok) {
+        showApiError(`Unexpected error (HTTP ${res.status}). Please try again.`);
+        return;
+      }
+
+      // ── Success ──
+      document.getElementById('feedbackForm').reset();
+      selectedRating = 0;
+      stars.forEach(s => { s.classList.remove('active'); s.style.color = '#d1d5db'; });
+      document.getElementById('starLabel').textContent = 'Click to rate';
+      document.getElementById('successBanner').classList.add('show');
+      setTimeout(() => document.getElementById('successBanner').classList.remove('show'), 4000);
+
+    } catch (err) {
+      // Network failure, CORS block, or backend completely unreachable
+      showApiError('Cannot reach the server. Make sure the backend is running.');
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Submit Feedback';
+    }
+  });
+
+  // ── Clear field errors on input ──────────────────────────────
+  document.getElementById('email').addEventListener('input', () => {
+    showFieldError('emailErr', false); setInputError('email', false);
+  });
+  document.getElementById('description').addEventListener('input', () => {
+    showFieldError('descErr', false); setInputError('description', false);
+  });
+</script>
+
+</body>
+</html>
