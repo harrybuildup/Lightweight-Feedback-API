@@ -2,14 +2,15 @@ from fastapi import FastAPI, HTTPException, status, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field, EmailStr
-from typing import Literal, List, Optional
+from schemas import *
+from typing import List, Optional
+from tables import init_db, DB_PATH
+from oauth2 import hash_password, verify_password, create_access_token, get_current_user
 import uuid
-import datetime as dt
 import sqlite3
 import json
-from pathlib import Path
 import os
+import datetime as dt
 
 app = FastAPI()
 
@@ -23,39 +24,12 @@ app.add_middleware(
 # Serve files from the static/ folder at /static URL
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Database setup
-DB_PATH = "feedback.db"
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS feedback (
-            id TEXT PRIMARY KEY,
-            email TEXT NOT NULL,
-            category TEXT NOT NULL,
-            description TEXT NOT NULL,
-            rating INTEGER NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-init_db()
 
 # For backward compatibility with tests
 feedback_db = []
 
-class Feedback(BaseModel):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    email: EmailStr
-    category: Literal['bug', 'feature', 'general'] = 'general'
-    description: str = Field(min_length=10)
-    rating: int = Field(ge=1, le=5)
-    created_at: dt.datetime = Field(default_factory=dt.datetime.utcnow)
- 
- 
+init_db()
+
 @app.get("/")
 def serve_home():
     return FileResponse("static/home.html")
@@ -72,6 +46,53 @@ def serve_admin():
 def health_check():
     return {"status": "API is running"}
 
+
+@app.post("/api/register", status_code=status.HTTP_201_CREATED)
+def register_user(user: UserCreate):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Check if user already exists
+    cursor.execute("SELECT * FROM users WHERE email = ?", (user.email,))
+    if cursor.fetchone():
+        conn.close()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Hash password and insert user
+    hashed_password = hash_password(user.password)
+    cursor.execute(
+        "INSERT INTO users (email, password, created_at) VALUES (?, ?, ?)",
+        (user.email, hashed_password, user.created_at.isoformat())
+    )
+    conn.commit()
+    conn.close()
+    
+    return {"message": "User registered successfully", "email": user.email}
+
+@app.post("/api/login", response_model=Token)
+def login_user(user: UserLogin):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE email = ?", (user.email,))
+    db_user = cursor.fetchone()
+    conn.close()
+    
+    if not db_user or not verify_password(user.password, db_user[2]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+    
+    # Create JWT token
+    access_token = create_access_token(data={"sub": db_user[1]})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/me")
+def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    return {"email": current_user["email"], "created_at": current_user["created_at"]}
 
 @app.get("/api/feedback", response_model=List[Feedback])
 def get_feedback(category: Optional[str] = None, skip: int = 0, limit: int = 100):
