@@ -52,7 +52,11 @@ def health_check():
  
 @app.get("/api/feedback", response_model=List[Feedback])
 def get_feedback():
-    
+    if not feedback_db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No feedback entries found"
+        )
     return feedback_db
  
  
