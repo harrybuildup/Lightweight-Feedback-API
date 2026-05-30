@@ -34,29 +34,29 @@ feedback_db = []
  
  
 @app.get("/")
-def serve_frontend():
-    return FileResponse("static/index.html")
+def serve_home():
+    return FileResponse("static/home.html")
  
 @app.get("/admin")
 def serve_admin():
     return FileResponse("static/admin.html")
+
+@app.get("/feedback")
+def serve_feedback():
+    return FileResponse("static/index.html")
  
 @app.get("/health")
 def health_check():
     return {"status": "API is running"}
  
  
-@app.get("/feedback", response_model=List[Feedback])
+@app.get("/api/feedback", response_model=List[Feedback])
 def get_feedback():
-    if not feedback_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No feedback entries found"
-        )
+    
     return feedback_db
  
  
-@app.post("/feedback", status_code=status.HTTP_201_CREATED)
+@app.post("/api/feedback", status_code=status.HTTP_201_CREATED)
 def submit_feedback(feedback: Feedback):
     feedback_db.append(feedback)
     return {"message": "Feedback submitted successfully", "feedback": feedback}
