@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Literal, List
 import uuid
 import datetime as dt
-# then:
 
  
 app = FastAPI()
